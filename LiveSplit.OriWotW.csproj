@@ -18,7 +18,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\</OutputPath>
+    <OutputPath>..\LiveSplit\LiveSplit\bin\Debug\Components\</OutputPath>
     <OutputType>Library</OutputType>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -71,11 +71,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="LiveSplit.Core">
-      <HintPath>..\..\LiveSplit\LiveSplit.Core.dll</HintPath>
+      <HintPath>..\LiveSplit\LiveSplit\bin\Debug\LiveSplit.Core.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="LiveSplit.Text">
-      <HintPath>..\..\LiveSplit\Components\LiveSplit.Text.dll</HintPath>
+      <HintPath>..\LiveSplit\LiveSplit\bin\Debug\Components\LiveSplit.Text.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
@@ -85,7 +85,7 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="UpdateManager">
-      <HintPath>..\..\LiveSplit\UpdateManager.dll</HintPath>
+      <HintPath>..\LiveSplit\LiveSplit\bin\Debug\UpdateManager.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -194,8 +194,8 @@
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy $(TargetPath) $(ProjectDir)Components\$(TargetFileName)
-copy $(TargetPath) D:\Extra\LiveSplit\Components\$(TargetFileName)</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
