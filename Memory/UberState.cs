@@ -14,6 +14,7 @@ namespace LiveSplit.OriWotW {
         PlayerUberStateDescriptor
     }
     public static class UberStateDefaults {
+        public static UberState playerOnTandem = new UberState() { Name = "playerOnTandemUberState", ID = 54402, GroupName = "playerUberStateGroupDescriptor", GroupID = 3440, Type = UberStateType.SerializedBooleanUberState };
         public static UberState lumaPoolsSeed = new UberState() { Name = "gardenerSeedGrassCollected", ID = 28662, GroupName = "questUberStateGroup", GroupID = 14019, Type = UberStateType.SerializedBooleanUberState };
         public static UberState windsweptWastesSeed = new UberState() { Name = "gardenerSeedFlowersCollected", ID = 20601, GroupName = "questUberStateGroup", GroupID = 14019, Type = UberStateType.SerializedBooleanUberState };
         public static UberState mouldwoodDepthsSeed = new UberState() { Name = "gardenerSeedBashCollected", ID = 8192, GroupName = "questUberStateGroup", GroupID = 14019, Type = UberStateType.SerializedBooleanUberState };
@@ -76,7 +77,7 @@ namespace LiveSplit.OriWotW {
         public static UberState savePedestalWindtornRuinsA = new UberState() { Name = "savePedestalUberState", ID = 41398, GroupName = "windsweptWastesGroupDescriptor", GroupID = 20120, Type = UberStateType.SavePedestalUberState };
         public static UberState savePedestalWindtornRuinsB = new UberState() { Name = "savePedestalUberState", ID = 4928, GroupName = "windtornRuinsGroup", GroupID = 10289, Type = UberStateType.SavePedestalUberState };
         public static UberState builderProjectSpiritWell = new UberState() { Name = "builderProjectSpiritWell", ID = 16825, GroupName = "hubUberStateGroup", GroupID = 42178, Type = UberStateType.SerializedByteUberState };
-        public static UberState fastTravel = new UberState() { Name = "fastTravelEnabledUberState", ID = 16489, GroupName = "npcsStateGroup", GroupID = 48248, Type = UberStateType.SerializedIntUberState };
+        public static UberState fastTravel = new UberState() { Name = "fastTravelEnabledUberState", ID = 16489, GroupName = "npcsStateGroup", GroupID = 48248, Type = UberStateType.SerializedByteUberState };
     }
     public class UberState {
         public UberStateType Type;

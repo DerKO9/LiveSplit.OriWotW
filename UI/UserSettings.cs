@@ -41,9 +41,6 @@ namespace LiveSplit.OriWotW {
             AddXmlItem<bool>(document, xmlSettings, "NoPause", chkNoPause.Checked);
             Settings.NoPause = chkNoPause.Checked;
 
-            AddXmlItem<bool>(document, xmlSettings, "FPSLock", chkFPSLock.Checked);
-            Settings.FPSLock = chkFPSLock.Checked;
-
             AddXmlItem<bool>(document, xmlSettings, "DisableDebug", chkDebug.Checked);
             Settings.DisableDebug = chkDebug.Checked;
 
@@ -70,10 +67,6 @@ namespace LiveSplit.OriWotW {
             chkNoPause.Checked = noPause;
             Settings.NoPause = noPause;
 
-            bool fpsLock = GetXmlBoolItem(node, ".//FPSLock", false);
-            chkFPSLock.Checked = fpsLock;
-            Settings.FPSLock = fpsLock;
-
             bool disableDebug = GetXmlBoolItem(node, ".//DisableDebug", true);
             chkDebug.Checked = disableDebug;
             Settings.DisableDebug = disableDebug;
@@ -81,10 +74,10 @@ namespace LiveSplit.OriWotW {
             XmlNodeList splitNodes = node.SelectNodes(".//Splits/Split");
             foreach (XmlNode splitNode in splitNodes) {
                 string[] splitValues = splitNode.InnerText.Split('|');
-                if (splitValues.Length == 2) {
+                if (splitValues.Length == 2 || splitValues.Length == 3) {
                     SplitType type = SplitType.ManualSplit;
                     if (Enum.TryParse<SplitType>(splitValues[0], out type)) {
-                        string value = splitValues[1];
+                        string value = splitValues.Length == 2 ? splitValues[1] : string.Concat(splitValues[1], '|', splitValues[2]);
                         Settings.Autosplits.Add(new Split() { Type = type, Value = value });
                     }
                 }

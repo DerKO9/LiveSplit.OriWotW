@@ -1,4 +1,5 @@
 ﻿using System;
+using LiveSplit.Options;
 namespace LiveSplit.OriWotW {
     public class LogicManager {
         public bool ShouldSplit { get; private set; }
@@ -60,12 +61,17 @@ namespace LiveSplit.OriWotW {
             GameTime = -1;
             return hooked;
         }
-        public void Update() {
+        public void Update(int currentSplit) {
             Memory.PatchNoPause(Settings.NoPause);
-            Memory.PatchFPSLock(Settings.FPSLock);
             if (Settings.DisableDebug && Running) {
                 hadDebug = Memory.DebugEnabled();
                 Memory.EnableDebug(false);
+            }
+
+            if (currentSplit != CurrentSplit) {
+                CurrentSplit = currentSplit;
+                Running = CurrentSplit > 0;
+                InitializeSplit();
             }
 
             if (CurrentSplit < Settings.Autosplits.Count) {
@@ -85,7 +91,7 @@ namespace LiveSplit.OriWotW {
         private void CheckSplit(Split split, bool updateValues) {
             GameState state = Memory.GameState();
             ShouldSplit = false;
-            Paused = Memory.IsLoadingGame();
+            Paused = Memory.IsLoadingGame(state);
 
             if (split.Type == SplitType.GameStart) {
                 Screen screen = Memory.TitleScreen();
@@ -99,7 +105,7 @@ namespace LiveSplit.OriWotW {
                 lastIntValue = difficulty;
                 lastScreen = screen;
             } else {
-                if (!updateValues && (state != GameState.Game || Memory.Dead() || (Paused && state != GameState.Game))) {
+                if (!updateValues && ((state != GameState.Game && split.Type != SplitType.Hitbox) || Memory.Dead() || (Paused && state != GameState.Game))) {
                     return;
                 }
 
@@ -148,6 +154,13 @@ namespace LiveSplit.OriWotW {
                         break;
                     case SplitType.Teleporter:
                         CheckTeleporter(split);
+                        break;
+                    case SplitType.Hitbox:
+                        Vector4 hitbox = new Vector4(split.Value);
+                        CheckHitbox(hitbox);
+                        break;
+                    case SplitType.UberState:
+                        CheckBoolUberState(split);
                         break;
                     case SplitType.GameEnd:
                         CheckHitbox(new Vector4("-4628.05,-6756,10,10"));
@@ -220,7 +233,7 @@ namespace LiveSplit.OriWotW {
                         break;
                 }
 
-                if (state != GameState.Game || Memory.Dead() || (Paused && state != GameState.Game)) {
+                if ((state != GameState.Game && split.Type != SplitType.Hitbox) || Memory.Dead() || (Paused && state != GameState.Game)) {
                     ShouldSplit = false;
                 } else if (DateTime.Now > splitLate) {
                     ShouldSplit = true;
@@ -253,6 +266,21 @@ namespace LiveSplit.OriWotW {
                 case SplitSpiritTrial.WellspringComplete: CheckUberIntValue(UberStateDefaults.wellspringRace, 2); break;
                 case SplitSpiritTrial.WindsweptWastesActivate: CheckUberIntValue(UberStateDefaults.desertRace, 1); break;
                 case SplitSpiritTrial.WindsweptWastesComplete: CheckUberIntValue(UberStateDefaults.desertRace, 2); break;
+            }
+        }
+        private void CheckBoolUberState(Split split) {
+            try {
+                var parts = split.Value.Split('|');
+                if (int.TryParse(parts[0], out int groupId)) {
+                    if (int.TryParse(parts[1], out int id)) {
+                        UberState value = Memory.GetUberState(groupId, id);
+                        if (value != null) {
+                            CheckUberBoolValue(value);
+                        }
+                    } else Log.Error($"failed to parse {split.Value}");
+                } else Log.Error($"failed to parse {split.Value}");
+            } catch (Exception e) {
+                Log.Error($"Exception thrown parsing {split.Value}: {e}");
             }
         }
         private void CheckSeed(Split split) {
@@ -326,8 +354,8 @@ namespace LiveSplit.OriWotW {
         private void CheckWorldEvent(Split split) {
             SplitWorldEvent worldEvent = Utility.GetEnumValue<SplitWorldEvent>(split.Value);
             switch (worldEvent) {
-                case SplitWorldEvent.FindKu: CheckAbility(AbilityType.Flap); break;
-                case SplitWorldEvent.LoseKu: CheckAbility(AbilityType.Flap, false); break;
+                case SplitWorldEvent.FindKu: CheckUberBoolValue(UberStateDefaults.playerOnTandem); break;
+                case SplitWorldEvent.LoseKu: CheckUberBoolValue(UberStateDefaults.playerOnTandem, false); break;
                 case SplitWorldEvent.DesertEscapeStart: CheckUberIntValue(UberStateDefaults.desertRuinsEscape, 1); break;
                 case SplitWorldEvent.DesertEscapeEnd: CheckUberIntValue(UberStateDefaults.desertRuinsEscape, 3); break;
                 case SplitWorldEvent.WinterForestEscapeStart: CheckUberIntValue(UberStateDefaults.winterForestWispQuest, 2); break;

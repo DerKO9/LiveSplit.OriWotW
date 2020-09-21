@@ -91,6 +91,21 @@ namespace LiveSplit.OriWotW {
                 if (nextControlType != UserSplit.Type) {
                     UserSplit.Value = "1";
                 }
+                txtValue.Width = 54;
+                txtValue.Visible = true;
+                cboValue.Visible = false;
+            } else if (nextControlType == SplitType.Hitbox) {
+                if (nextControlType != UserSplit.Type) {
+                    UserSplit.Value = "X, Y, Width, Height";
+                }
+                txtValue.Width = 202;
+                txtValue.Visible = true;
+                cboValue.Visible = false;
+            } else if (nextControlType == SplitType.UberState) {
+                if (nextControlType != UserSplit.Type) {
+                    UserSplit.Value = "34543|11226";
+                }
+                txtValue.Width = 202;
                 txtValue.Visible = true;
                 cboValue.Visible = false;
             } else {

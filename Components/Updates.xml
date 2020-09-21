@@ -1,5 +1,134 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <updates>
+    <update version="1.4.3">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Fixed Uber State splits not saving </change>
+        </changelog>
+    </update>
+    <update version="1.4.2">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Add Split option for custom bool Uber States </change>
+        </changelog>
+    </update>
+    <update version="1.4.1">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Fix Fast Travel uberstate type </change>
+        </changelog>
+    </update>
+    <update version="1.4.0">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Update loadless timer to pause on black screen when quiting to menu to be more like it used to be </change>
+        </changelog>
+    </update>
+    <update version="1.3.9">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Update for new patch 2020-05-14 </change>
+        </changelog>
+    </update>
+    <update version="1.3.8">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Allow Hitbox splits to work from menu to in game </change>
+        </changelog>
+    </update>
+    <update version="1.3.7">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Added Hitbox splits </change>
+        </changelog>
+    </update>
+    <update version="1.3.6">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Fixed issues with autosplitter not rehooking the game properly after restarts </change>
+        </changelog>
+    </update>
+    <update version="1.3.5">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Added ability to show Trial Time with a Text component named as Trial Time </change>
+        </changelog>
+    </update>
+    <update version="1.3.4">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Added functionality for when editing splits (ie Moving a Split up/down) to automatically update the associated autosplitter settings to make changing splits easier and flow better </change>
+        </changelog>
+    </update>
+    <update version="1.3.3">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Fix autosplitter if you changed settings mid run it would not longer work </change>
+        </changelog>
+    </update>
+    <update version="1.3.2">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Minor performance improvements </change>
+            <change> Fix signatures </change>
+        </changelog>
+    </update>
+    <update version="1.3.1">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Fix Ku Lost split </change>
+        </changelog>
+    </update>
+    <update version="1.3.0">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Possibly fix timer not pasuing during load from menu when menuing too fast </change>
+        </changelog>
+    </update>
+    <update version="1.2.9">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Update for new patch </change>
+        </changelog>
+    </update>
+    <update version="1.2.8">
+        <files>
+            <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>
+        </files>
+        <changelog>
+            <change> Code cleanup/improvements </change>
+        </changelog>
+    </update>
     <update version="1.2.7">
         <files>
             <file path="Components/LiveSplit.OriWotW.dll" status="changed"/>

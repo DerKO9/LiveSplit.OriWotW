@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Windows.Forms;
 namespace LiveSplit.OriWotW {
 #if Console
     public interface IComponentFactory { }
@@ -14,6 +15,7 @@ namespace LiveSplit.OriWotW {
         }
         public Type ComponentFactoryClassType { get; }
     }
+    public class RunEditorDialog : Form { }
     public interface IComponent { }
     public enum TimerPhase {
         NotRunning = 0,
@@ -56,6 +58,7 @@ namespace LiveSplit.OriWotW {
         public Time CurrentTime;
         public Run Run;
         public ILayout Layout;
+        public int CurrentSplitIndex;
         public event EventHandler OnPause;
         public event EventHandler OnResume;
         public event EventHandlerT<TimerPhase> OnReset;

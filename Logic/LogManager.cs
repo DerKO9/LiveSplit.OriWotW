@@ -20,7 +20,8 @@ namespace LiveSplit.OriWotW {
         Scene,
         UberState,
         Patches,
-        Stats
+        Stats,
+        Version
     }
     public class LogManager {
         public List<ILogEntry> LogEntries = new List<ILogEntry>();
@@ -58,8 +59,8 @@ namespace LiveSplit.OriWotW {
             lock (LogEntries) {
                 DateTime date = DateTime.Now;
                 bool isDead = logic.Memory.Dead();
-                bool isLoading = logic.Memory.IsLoadingGame();
                 GameState gameState = logic.Memory.GameState();
+                bool isLoading = logic.Memory.IsLoadingGame(gameState);
                 bool dontCheckValue = isDead || isLoading || gameState != GameState.Game;
                 foreach (LogObject key in Enum.GetValues(typeof(LogObject))) {
                     string previous = currentValues[key];
@@ -82,6 +83,7 @@ namespace LiveSplit.OriWotW {
                         case LogObject.UberState: if (!dontCheckValue) { CheckUberStates(logic); } break;
                         case LogObject.Patches: current = logic.Memory.Patches(); break;
                         case LogObject.Stats: current = dontCheckValue ? previous : logic.Memory.PlayerStats().ToString(); break;
+                        case LogObject.Version: current = MemoryManager.Version.ToString(); break;
                             //case LogObject.Position: Vector2 point = logic.Memory.Position(); current = $"{point.X:0}, {point.Y:0}"; break;
                     }
 

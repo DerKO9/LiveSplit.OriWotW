@@ -6,7 +6,8 @@ using LiveSplit.OriWotW.Il2Cpp;
 namespace LiveSplit.OriWotW {
     public enum PointerVersion {
         All,
-        V2
+        V2,
+        V3
     }
     public enum AutoDeref {
         None,
@@ -16,6 +17,7 @@ namespace LiveSplit.OriWotW {
     public class ProgramPointer {
         private int lastID;
         private DateTime lastTry;
+        private IFindPointer currentFinder;
         public IntPtr Pointer { get; private set; }
         public IFindPointer[] Finders { get; private set; }
         public string AsmName { get; private set; }
@@ -28,7 +30,7 @@ namespace LiveSplit.OriWotW {
             lastTry = DateTime.MinValue;
         }
 
-        public T Read<T>(Process program, params int[] offsets) where T : struct {
+        public T Read<T>(Process program, params int[] offsets) where T : unmanaged {
             GetPointer(program);
             return program.Read<T>(Pointer, offsets);
         }
@@ -40,20 +42,13 @@ namespace LiveSplit.OriWotW {
             GetPointer(program);
             return program.Read(Pointer, length, offsets);
         }
-        public void Write<T>(Process program, T value, params int[] offsets) where T : struct {
+        public void Write<T>(Process program, T value, params int[] offsets) where T : unmanaged {
             GetPointer(program);
             program.Write<T>(Pointer, value, offsets);
         }
         public void Write(Process program, byte[] value, params int[] offsets) {
             GetPointer(program);
             program.Write(Pointer, value, offsets);
-        }
-        public void ClearPointer() {
-            Pointer = IntPtr.Zero;
-            lastTry = DateTime.Now.AddSeconds(1);
-            for (int i = 0; i < Finders.Length; i++) {
-                Finders[i].Reset();
-            }
         }
         public IntPtr GetPointer(Process program) {
             if (program == null) {
@@ -63,6 +58,10 @@ namespace LiveSplit.OriWotW {
             } else if (program.Id != lastID) {
                 Pointer = IntPtr.Zero;
                 lastID = program.Id;
+            } else if (Pointer != IntPtr.Zero) {
+                IntPtr pointer = Pointer;
+                currentFinder.VerifyPointer(program, ref pointer);
+                Pointer = pointer;
             }
 
             if (Pointer == IntPtr.Zero && DateTime.Now > lastTry) {
@@ -74,6 +73,7 @@ namespace LiveSplit.OriWotW {
                         try {
                             Pointer = finder.FindPointer(program, AsmName);
                             if (Pointer != IntPtr.Zero || finder.FoundBaseAddress()) {
+                                currentFinder = finder;
                                 break;
                             }
                         } catch { }
@@ -85,29 +85,18 @@ namespace LiveSplit.OriWotW {
         public static IntPtr DerefPointer(Process program, IntPtr pointer, AutoDeref autoDeref) {
             if (pointer != IntPtr.Zero) {
                 if (autoDeref != AutoDeref.None) {
-                    if (MemoryReader.is64Bit) {
-                        pointer = (IntPtr)program.Read<ulong>(pointer);
-                    } else {
-                        pointer = (IntPtr)program.Read<uint>(pointer);
-                    }
+                    pointer = program.Read<IntPtr>(pointer);
                     if (autoDeref == AutoDeref.Double) {
-                        if (MemoryReader.is64Bit) {
-                            pointer = (IntPtr)program.Read<ulong>(pointer);
-                        } else {
-                            pointer = (IntPtr)program.Read<uint>(pointer);
-                        }
+                        pointer = program.Read<IntPtr>(pointer);
                     }
                 }
             }
             return pointer;
         }
         public static Tuple<IntPtr, IntPtr> GetAddressRange(Process program, string asmName) {
-            Module64[] modules = program.Modules64();
-            for (int i = 0; i < modules.Length; i++) {
-                Module64 module = modules[i];
-                if (module.Name.Equals(asmName, StringComparison.OrdinalIgnoreCase)) {
-                    return new Tuple<IntPtr, IntPtr>(module.BaseAddress, module.BaseAddress + module.MemorySize);
-                }
+            Module64 module = program.Module64(asmName);
+            if (module != null) {
+                return new Tuple<IntPtr, IntPtr>(module.BaseAddress, module.BaseAddress + module.MemorySize);
             }
             return new Tuple<IntPtr, IntPtr>(IntPtr.Zero, IntPtr.Zero);
         }
@@ -115,22 +104,19 @@ namespace LiveSplit.OriWotW {
     public interface IFindPointer {
         IntPtr FindPointer(Process program, string asmName);
         bool FoundBaseAddress();
-        void Reset();
+        void VerifyPointer(Process program, ref IntPtr pointer);
         PointerVersion Version { get; }
     }
     public class FindIl2CppOffset {
         private static int lastPID;
-        private static Dictionary<string, int> offsets = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private readonly static Dictionary<string, int> offsets = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         public static int GetOffset(Process program, string fullname) {
-            bool isInitialized = true;
-            if (FindIl2Cpp.Decompiler == null || lastPID != program.Id) {
+            if (lastPID != program.Id) {
                 lastPID = program.Id;
                 offsets.Clear();
-
-                isInitialized = FindIl2Cpp.InitializeIl2Cpp(program);
             }
-            if (!isInitialized) { return 0; }
+            if (FindIl2Cpp.Decompiler == null) { return 0; }
 
             int offset;
             if (offsets.TryGetValue(fullname, out offset)) {
@@ -143,13 +129,11 @@ namespace LiveSplit.OriWotW {
     }
     //Will only work for version 24.1 PE files. Structures need changed per version in the Il2Cpp files
     public class FindIl2Cpp : IFindPointer {
-        private static object SyncLock = new object();
-        private static int lastPID;
         public static Il2CppDecompiler Decompiler;
         public PointerVersion Version { get; private set; }
-        private AutoDeref AutoDeref;
-        private string FullName;
-        private int Offset;
+        private readonly AutoDeref AutoDeref;
+        private readonly string FullName;
+        private readonly int Offset;
         private IntPtr BasePtr;
         public FindIl2Cpp(PointerVersion version, AutoDeref autoDeref, string fullName, int offset) {
             Version = version;
@@ -162,44 +146,31 @@ namespace LiveSplit.OriWotW {
             return BasePtr != IntPtr.Zero;
         }
         public static bool InitializeIl2Cpp(Process program) {
-            if (Decompiler == null || lastPID != program.Id) {
-                lock (SyncLock) {
-                    if (Decompiler != null && lastPID == program.Id) { return true; }
-                    lastPID = program.Id;
+            string programPath = Path.GetDirectoryName(program.MainModule.FileName);
+            string metaFile = Path.Combine(programPath, @"oriwotw_Data\il2cpp_data\Metadata\global-metadata.dat");
+            string ilFile = Path.Combine(programPath, @"GameAssembly.dll");
+            if (!File.Exists(metaFile) || !File.Exists(ilFile)) { return false; }
 
-                    string programPath = Path.GetDirectoryName(program.MainModule.FileName);
-                    string metaFile = Path.Combine(programPath, @"oriwotw_Data\il2cpp_data\Metadata\global-metadata.dat");
-                    string ilFile = Path.Combine(programPath, @"GameAssembly.dll");
-                    if (!File.Exists(metaFile) || !File.Exists(ilFile)) { return false; }
-
-                    byte[] metaDataBytes = File.ReadAllBytes(metaFile);
-                    byte[] il2CppBytes = File.ReadAllBytes(ilFile);
-                    switch (il2CppBytes.Length) {
-                        case 73919488: MemoryManager.Version = PointerVersion.V2; break;
-                        default: MemoryManager.Version = PointerVersion.All; break;
-                    }
-                    Metadata metaData;
-                    Il2CppData il2Cpp;
-                    Il2CppReader.Init(il2CppBytes, metaDataBytes, out metaData, out il2Cpp);
-                    Il2CppExecutor executor = new Il2CppExecutor(metaData, il2Cpp);
-                    Decompiler = new Il2CppDecompiler(executor);
-                }
-            }
+            byte[] metaDataBytes = File.ReadAllBytes(metaFile);
+            byte[] il2CppBytes = File.ReadAllBytes(ilFile);
+            Il2CppReader.Init(il2CppBytes, metaDataBytes, out Metadata metaData, out Il2CppData il2Cpp);
+            Il2CppExecutor executor = new Il2CppExecutor(metaData, il2Cpp);
+            Decompiler = new Il2CppDecompiler(executor);
             return true;
         }
+        public void VerifyPointer(Process program, ref IntPtr pointer) {
+        }
         public IntPtr FindPointer(Process program, string asmName) {
-            if (!InitializeIl2Cpp(program)) { return IntPtr.Zero; }
+            if (Decompiler == null) { return IntPtr.Zero; }
             return ProgramPointer.DerefPointer(program, GetPointer(program, asmName), AutoDeref);
         }
         private IntPtr GetPointer(Process program, string asmName) {
-            if (BasePtr == IntPtr.Zero) {
-                ulong rva = Decompiler.GetRVA(FullName);
-                if (string.IsNullOrEmpty(asmName)) {
-                    BasePtr = program.MainModule.BaseAddress + (int)rva + Offset;
-                } else {
-                    Tuple<IntPtr, IntPtr> range = ProgramPointer.GetAddressRange(program, asmName);
-                    BasePtr = range.Item1 + (int)rva + Offset;
-                }
+            ulong rva = Decompiler.GetRVA(FullName);
+            if (string.IsNullOrEmpty(asmName)) {
+                BasePtr = program.MainModule.BaseAddress + (int)rva + Offset;
+            } else {
+                Tuple<IntPtr, IntPtr> range = ProgramPointer.GetAddressRange(program, asmName);
+                BasePtr = range.Item1 + (int)rva + Offset;
             }
 
             int offset = 0;
@@ -208,50 +179,54 @@ namespace LiveSplit.OriWotW {
             }
             return BasePtr + offset;
         }
-        public void Reset() {
-            BasePtr = IntPtr.Zero;
-        }
     }
     public class FindPointerSignature : IFindPointer {
-        private int lastPID;
         public PointerVersion Version { get; private set; }
-        private AutoDeref AutoDeref;
-        private string Signature;
-        private int Offset;
+        private readonly AutoDeref AutoDeref;
+        private readonly string Signature;
+        private readonly MemorySearcher Searcher;
+        private readonly int[] Relative;
         private IntPtr BasePtr;
+        private DateTime LastVerified;
 
-        public FindPointerSignature(PointerVersion version, AutoDeref autoDeref, string signature, int offset) {
+        public FindPointerSignature(PointerVersion version, AutoDeref autoDeref, string signature, params int[] relative) {
             Version = version;
             AutoDeref = autoDeref;
             Signature = signature;
-            Offset = offset;
             BasePtr = IntPtr.Zero;
+            Searcher = new MemorySearcher();
+            LastVerified = DateTime.MaxValue;
+            Relative = relative;
         }
 
         public bool FoundBaseAddress() {
             return BasePtr != IntPtr.Zero;
         }
+        public void VerifyPointer(Process program, ref IntPtr pointer) {
+            DateTime now = DateTime.Now;
+            if (now <= LastVerified) { return; }
+
+            bool isValid = Searcher.VerifySignature(program, BasePtr, Signature);
+            LastVerified = now.AddSeconds(1);
+            if (isValid) {
+                int offset = CalculateRelative(program);
+                IntPtr verify = ProgramPointer.DerefPointer(program, BasePtr + offset, AutoDeref);
+                if (verify != pointer) {
+                    pointer = verify;
+                }
+                return;
+            }
+
+            BasePtr = IntPtr.Zero;
+            pointer = IntPtr.Zero;
+        }
         public IntPtr FindPointer(Process program, string asmName) {
             return ProgramPointer.DerefPointer(program, GetPointer(program, asmName), AutoDeref);
         }
         private IntPtr GetPointer(Process program, string asmName) {
-            if (lastPID != program.Id) {
-                lastPID = program.Id;
-                BasePtr = IntPtr.Zero;
-            }
-
-            if (BasePtr != IntPtr.Zero) {
-                int offset = 0;
-                if (AutoDeref != AutoDeref.None) {
-                    offset = program.Read<int>(BasePtr + Offset) + 4;
-                }
-                return BasePtr + Offset + offset;
-            }
-
-            MemorySearcher Searcher = new MemorySearcher();
             if (string.IsNullOrEmpty(asmName)) {
                 Searcher.MemoryFilter = delegate (MemInfo info) {
-                    return (info.State & 0x1000) != 0 && (info.Protect & 0x20) != 0 && (info.Protect & 0x100) == 0;
+                    return (info.State & 0x1000) != 0 && (info.Protect & 0x40) != 0 && (info.Protect & 0x100) == 0;
                 };
             } else {
                 Tuple<IntPtr, IntPtr> range = ProgramPointer.GetAddressRange(program, asmName);
@@ -260,55 +235,64 @@ namespace LiveSplit.OriWotW {
                 };
             }
 
-            IntPtr ptr = Searcher.FindSignature(program, Signature);
-            if (ptr != IntPtr.Zero) {
-                BasePtr = ptr;
-                int offset = 0;
-                if (AutoDeref != AutoDeref.None) {
-                    offset = program.Read<int>(BasePtr + Offset) + 4;
-                }
-                return BasePtr + Offset + offset;
+            BasePtr = Searcher.FindSignature(program, Signature);
+            if (BasePtr != IntPtr.Zero) {
+                LastVerified = DateTime.Now.AddSeconds(5);
+                int offset = CalculateRelative(program);
+                return BasePtr + offset;
             }
-            return IntPtr.Zero;
+            return BasePtr;
         }
-        public void Reset() {
-            BasePtr = IntPtr.Zero;
+        private int CalculateRelative(Process program) {
+            int maxIndex = Relative.Length - 1;
+            if (Relative == null || maxIndex < 0) { return 0; }
+
+            int offset = 0;
+            for (int i = 0; i < maxIndex; i++) {
+                offset += Relative[i];
+                offset += program.Read<int>(BasePtr + offset) + 4;
+            }
+            return offset + Relative[maxIndex];
         }
     }
     public class FindOffset : IFindPointer {
-        private int lastPID;
-        private int[] Offsets;
-        private IntPtr BasePtr;
         public PointerVersion Version { get; private set; }
+        private readonly AutoDeref AutoDeref;
+        private readonly int[] Offsets;
+        private IntPtr BasePtr;
+        private DateTime LastVerified;
 
-        public FindOffset(PointerVersion version, params int[] offsets) {
+        public FindOffset(PointerVersion version, AutoDeref autoDeref, params int[] offsets) {
             Version = version;
+            AutoDeref = autoDeref;
             Offsets = offsets;
+            LastVerified = DateTime.MaxValue;
         }
 
         public bool FoundBaseAddress() {
             return BasePtr != IntPtr.Zero;
         }
-        public IntPtr FindPointer(Process program, string asmName) {
-            if (lastPID != program.Id) {
-                lastPID = program.Id;
-
-                if (string.IsNullOrEmpty(asmName)) {
-                    BasePtr = program.MainModule.BaseAddress;
-                } else {
-                    Tuple<IntPtr, IntPtr> range = ProgramPointer.GetAddressRange(program, asmName);
-                    BasePtr = range.Item1;
-                }
-            }
-
-            if (MemoryReader.is64Bit) {
-                return (IntPtr)program.Read<ulong>(BasePtr, Offsets);
-            } else {
-                return (IntPtr)program.Read<uint>(BasePtr, Offsets);
+        public void VerifyPointer(Process program, ref IntPtr pointer) {
+            if (DateTime.Now > LastVerified) {
+                pointer = IntPtr.Zero;
             }
         }
-        public void Reset() {
-            BasePtr = IntPtr.Zero;
+        public IntPtr FindPointer(Process program, string asmName) {
+            if (string.IsNullOrEmpty(asmName)) {
+                BasePtr = program.MainModule.BaseAddress;
+            } else {
+                Tuple<IntPtr, IntPtr> range = ProgramPointer.GetAddressRange(program, asmName);
+                BasePtr = range.Item1;
+            }
+
+            if (Offsets.Length > 1) {
+                LastVerified = DateTime.Now.AddSeconds(5);
+                return ProgramPointer.DerefPointer(program, program.Read<IntPtr>(BasePtr, Offsets), AutoDeref);
+            } else {
+                LastVerified = DateTime.MaxValue;
+                BasePtr += Offsets[0];
+                return ProgramPointer.DerefPointer(program, BasePtr, AutoDeref);
+            }
         }
     }
 }

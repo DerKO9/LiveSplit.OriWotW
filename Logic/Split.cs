@@ -21,6 +21,8 @@ namespace LiveSplit.OriWotW {
         GameEnd,
         [Description("Health Cell")]
         HealthCell,
+        [Description("Hitbox")]
+        Hitbox,
         [Description("Keystone")]
         Keystone,
         [Description("Map %")]
@@ -38,7 +40,9 @@ namespace LiveSplit.OriWotW {
         [Description("Wisp")]
         Wisp,
         [Description("World Event")]
-        WorldEvent
+        WorldEvent,
+        [Description("Uber State")]
+        UberState
     }
     public class Split {
         public string Name { get; set; }
